@@ -150,8 +150,8 @@ const init = (data, callback) => {
   const img = new Image()
   img.src = data
   img.onload = () => {
-    const width = img.width / 5
-    const height = img.height / 5
+    const width = img.width
+    const height = img.height
     canvas.width = width
     canvas.height = height
     context.drawImage(img, 0, 0, width, height)
