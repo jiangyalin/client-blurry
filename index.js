@@ -29,6 +29,24 @@ const setArrMatrix = (arr, x, y, data) => {
   return arr
 }
 
+// 判断颜色范围
+const tsd = (color, min = 0, max = 255) => {
+  if (min < 0) min = 0
+  if (max > 255) max = 255
+  return color <= max && color >= min
+}
+
+// 将hex颜色转成rgb
+const hexToRgba = hex => {
+  const RGBA = 'rgba(' + parseInt('0x' + hex.slice(1, 3)) + ',' + parseInt('0x' + hex.slice(3, 5)) + ',' + parseInt('0x' + hex.slice(5, 7)) + ',' + 1 + ')'
+  return {
+    red: parseInt('0x' + hex.slice(1, 3)),
+    green: parseInt('0x' + hex.slice(3, 5)),
+    blue: parseInt('0x' + hex.slice(5, 7)),
+    rgba: RGBA
+  }
+}
+
 const uint8ClampedArrayToArrMatrix = (imgData, width, height) => {
   const data = []
   for (let i = 0; i < height; i++) {
@@ -141,6 +159,31 @@ const gaussianBlurry = (imgSrc, threshold, σ, callback) => {
   })
 }
 
+// 抠图
+const cutout = (imgSrc, color, threshold, callback) => {
+  init(imgSrc, (canvas, context, imgData, width, height) => {
+    const data = uint8ClampedArrayToArrMatrix(imgData, width, height)
+
+    data.forEach((item, i) => {
+      item.forEach((data, j) => {
+        const checkRed = tsd(data[0], hexToRgba(color).red - threshold, hexToRgba(color).red + threshold)
+        const checkGreen = tsd(data[1], hexToRgba(color).green - threshold, hexToRgba(color).green + threshold)
+        const checkBlue = tsd(data[2], hexToRgba(color).blue - threshold, hexToRgba(color).blue + threshold)
+        const checkColor = checkRed && checkGreen && checkBlue
+        if (checkColor) {
+          imgData.data[i * width * 4 + j * 4] = 0
+          imgData.data[i * width * 4 + j * 4 + 1] = 0
+          imgData.data[i * width * 4 + j * 4 + 2] = 0
+          imgData.data[i * width * 4 + j * 4 + 3] = 0
+        }
+      })
+    })
+    context.putImageData(imgData, 0, 0)
+    callback(canvas.toDataURL('png'))
+    canvas.parentNode.removeChild(canvas)
+  })
+}
+
 const init = (data, callback) => {
   const canvas = document.createElement('canvas')
   canvas.className = 'j-client-blurry-canvas'
@@ -162,5 +205,6 @@ const init = (data, callback) => {
 
 export {
   mosaic, // 马赛克
-  gaussianBlurry // 高斯模糊
+  gaussianBlurry, // 高斯模糊
+  cutout // 抠图
 }
