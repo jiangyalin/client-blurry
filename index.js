@@ -184,6 +184,157 @@ const cutout = (imgSrc, color, threshold, callback) => {
   })
 }
 
+// 去除黑条（去码）
+const removeBlackBar = (imgSrc, callback = () => {}) => {
+  init(imgSrc, (canvas, context, imgData, width, height) => {
+    const blackBarArea = getBlackBarArea(uint8ClampedArrayToArrMatrix(imgData, width, height))
+
+    const color = { r: 255, g: 101, b: 80, a: 255 }
+    // const color = { r: 255, g: 255, b: 255, a: 255 }
+
+    blackBarArea.forEach(item => {
+      for (let x = item.x; x < item.x + item.w; x++) {
+        for (let y = item.y; y < item.y + item.h; y++) {
+          imgData.data[y * width * 4 + x * 4] = color.r
+          imgData.data[y * width * 4 + x * 4 + 1] = color.g
+          imgData.data[y * width * 4 + x * 4 + 2] = color.b
+          imgData.data[y * width * 4 + x * 4 + 3] = color.a
+        }
+      }
+    })
+
+    context.putImageData(imgData, 0, 0)
+    callback(canvas.toDataURL('png'))
+    canvas.parentNode.removeChild(canvas)
+  })
+}
+
+// 计算阵列中黑条的位置
+const getBlackBarArea = matrix => {
+  // const _matrix = matrix
+  // 118, 229, 227
+
+  // 获取检查点
+  const getCheckPoint = (matrix, checkColor, x, y) => {
+    // 检查中点
+    const checkC = matrix[y][x].join() === checkColor
+    // 检查上点
+    const checkT = matrix[y - 1 >= 0 ? y - 1 : 0][x].join() === checkColor
+    // 检查右点
+    const checkR = matrix[y][x + 1 < matrix[0].length ? x + 1 : matrix[0].length - 1].join() === checkColor
+    // 检查下点
+    const checkB = matrix[y + 1 < matrix.length ? y + 1 : matrix.length - 1][x].join() === checkColor
+    // 检查左点
+    const checkL = matrix[y][x - 1 >= 0 ? x - 1 : 0].join() === checkColor
+
+    return {
+      checkC,
+      checkT,
+      checkR,
+      checkB,
+      checkL
+    }
+  }
+
+  // 检查点类型
+  const checkPointType = (matrix, checkColor, x, y) => {
+    const checkPoint = getCheckPoint(matrix, checkColor, x, y)
+    return {
+      // 左上
+      isTl: checkPoint.checkC && !checkPoint.checkT && checkPoint.checkR && checkPoint.checkB && !checkPoint.checkL,
+      // 右上
+      isTr: checkPoint.checkC && !checkPoint.checkT && !checkPoint.checkR && checkPoint.checkB && checkPoint.checkL,
+      // 左下
+      isBl: checkPoint.checkC && checkPoint.checkT && checkPoint.checkR && !checkPoint.checkB && !checkPoint.checkL,
+      // 右下
+      isBr: checkPoint.checkC && checkPoint.checkT && !checkPoint.checkR && !checkPoint.checkB && checkPoint.checkL,
+      // 上中
+      isTc: checkPoint.checkC && !checkPoint.checkT && checkPoint.checkR && checkPoint.checkB && checkPoint.checkL,
+      // 下中
+      isBc: checkPoint.checkC && checkPoint.checkT && checkPoint.checkR && !checkPoint.checkB && checkPoint.checkL,
+      // 左中
+      isLc: checkPoint.checkC && checkPoint.checkT && checkPoint.checkR && checkPoint.checkB && !checkPoint.checkL,
+      // 右中
+      isRc: checkPoint.checkC && checkPoint.checkT && !checkPoint.checkR && checkPoint.checkB && checkPoint.checkL
+    }
+  }
+
+  // console.log('matrix', matrix)
+  let tl = { x: 0, y: 0 } // 左上角
+  let tr = { x: 0, y: 0 } // 右上角
+  let bl = { x: 0, y: 0 } // 左下角
+  let br = { x: 0, y: 0 } // 右下角
+  let arr = []
+  let check = false
+  let testIndex = 0
+  /*标记*/
+  for (let y = 0; y < matrix.length; y++) {
+    for (let x = 0; x < matrix[0].length; x++) {
+      const checkColor = matrix[y][x].join()
+      check = false
+      // 白色不进行矩形判断
+      if (checkColor === '255,255,255,255') continue
+      // 疑似tl
+      if (checkPointType(matrix, checkColor, x, y).isTl) {
+        tl = { x: x, y: y }
+        for (let i = x; i < matrix[0].length; i++) {
+          if (matrix[y][i].join() !== checkColor) {
+            if (checkPointType(matrix, checkColor, i - 1, y).isTr && i - x > 10) {
+              tr = { x: i - 1, y: y }
+              testIndex ++
+              check = true
+            }
+            break
+          }
+        }
+
+        if (check) {
+          check = false
+          for (let i = tr.y; i < matrix.length; i++) {
+            if (matrix[i][tr.x].join() !== checkColor) {
+              if (checkPointType(matrix, checkColor, tr.x, i - 1).isBr && i - tr.y > 10) {
+                br = { x: tr.x, y: i - 1 }
+                check = true
+              }
+              break
+            }
+          }
+        }
+
+        if (check) {
+          check = false
+          for (let i = br.x; i >= 0; i--) {
+            if (matrix[br.y][i].join() !== checkColor) {
+              if (checkPointType(matrix, checkColor, i + 1, br.y).isBl && br.x - i > 10) {
+                bl = { x: i + 1, y: br.y }
+                check = true
+              }
+              break
+            }
+          }
+        }
+      }
+
+      if (check) {
+        arr.push({
+          tl,
+          tr,
+          br,
+          bl
+        })
+      }
+    }
+  }
+  console.log('arr', arr)
+
+  return arr.map(item => ({
+    x: item.tl.x,
+    y: item.tl.y,
+    w: item.tr.x - item.tl.x + 1,
+    h: item.bl.y - item.tl.y + 1
+  }))
+}
+
 const init = (data, callback) => {
   const canvas = document.createElement('canvas')
   canvas.className = 'j-client-blurry-canvas'
@@ -206,5 +357,6 @@ const init = (data, callback) => {
 export {
   mosaic, // 马赛克
   gaussianBlurry, // 高斯模糊
-  cutout // 抠图
+  cutout, // 抠图
+  removeBlackBar // 去除黑条（去码）
 }
