@@ -1,3 +1,4 @@
+/* eslint-disable */
 // 获取矩阵
 const getArrMatrix = (arr, x, y, threshold) => {
   const matrix = []
@@ -193,14 +194,55 @@ const removeBlackBar = (imgSrc, callback = () => {}) => {
     // const color = { r: 255, g: 255, b: 255, a: 255 }
 
     blackBarArea.forEach(item => {
-      for (let x = item.x; x < item.x + item.w; x++) {
-        for (let y = item.y; y < item.y + item.h; y++) {
-          imgData.data[y * width * 4 + x * 4] = color.r
-          imgData.data[y * width * 4 + x * 4 + 1] = color.g
-          imgData.data[y * width * 4 + x * 4 + 2] = color.b
-          imgData.data[y * width * 4 + x * 4 + 3] = color.a
-        }
-      }
+      // for (let x = item.x; x < item.x + item.w; x++) {
+      //   for (let y = item.y; y < item.y + item.h; y++) {
+      //     imgData.data[y * width * 4 + x * 4] = color.r
+      //     imgData.data[y * width * 4 + x * 4 + 1] = color.g
+      //     imgData.data[y * width * 4 + x * 4 + 2] = color.b
+      //     imgData.data[y * width * 4 + x * 4 + 3] = color.a
+      //   }
+      // }
+
+	    let w = 0
+			for (let y = item.data.tl.y; y < item.data.br.y; y++) {
+				let startX = 0
+				let endX = 0
+				if (item.data.bl.y === item.data.br.y) {
+					startX = item.data.bl.x
+					endX = item.data.br.x
+				}
+				if (item.data.bl.y !== item.data.br.y) {
+					if (y <= item.data.bl.y) {
+						startX = (item.data.tl.x + (item.data.bl.x - item.data.tl.x) / Math.abs(item.data.bl.y - item.data.tl.y) * (y - item.data.tl.y)).toFixed()
+						endX = (item.data.tl.x + (item.data.tr.x - item.data.tl.x) / Math.abs(item.data.tr.y - item.data.tl.y) * (y - item.data.tl.y)).toFixed()
+						if (y === item.data.bl.y) w = endX - startX
+					}
+					if (y > item.data.bl.y && y <= item.data.tr.y) {
+						startX = (item.data.bl.x + (item.data.br.x - item.data.bl.x) / Math.abs(item.data.br.y - item.data.bl.y) * (y - item.data.bl.y)).toFixed()
+						endX = Number(startX) + Number(w)
+					}
+					if (y > item.data.tr.y && y < item.data.br.y) {
+						startX = (item.data.bl.x + (item.data.br.x - item.data.bl.x) / Math.abs(item.data.br.y - item.data.bl.y) * (y - item.data.bl.y)).toFixed()
+						endX = (item.data.tr.x - (item.data.tr.x - item.data.br.x) / Math.abs(item.data.br.y - item.data.tr.y) * (y - item.data.tr.y))
+					}
+				}
+				for (let x = startX; x < endX; x++) {
+					imgData.data[y * width * 4 + x * 4] = color.r
+					imgData.data[y * width * 4 + x * 4 + 1] = color.g
+					imgData.data[y * width * 4 + x * 4 + 2] = color.b
+					imgData.data[y * width * 4 + x * 4 + 3] = color.a
+				}
+				if (startX !== 0 || endX !== 0) {
+					// console.log('y', y)
+					// console.log('x', 'startX = ' + startX + '; endX = ' + endX)
+				}
+			}
+	    // const _y = 173
+			// const _x = 418
+	    // imgData.data[_y * width * 4 + _x * 4] = color.r
+	    // imgData.data[_y * width * 4 + _x * 4 + 1] = color.g
+	    // imgData.data[_y * width * 4 + _x * 4 + 1] = color.b
+	    // imgData.data[_y * width * 4 + _x * 4 + 1] = color.a
     })
 
     context.putImageData(imgData, 0, 0)
@@ -216,23 +258,61 @@ const getBlackBarArea = matrix => {
 
   // 获取检查点
   const getCheckPoint = (matrix, checkColor, x, y) => {
+
+    const getX = offset => {
+      if (offset >= 0) return x + offset < matrix[0].length ? x + offset : matrix[0].length - 1
+      if (offset < 0) return x + offset >= 0 ? x + offset : 0
+    }
+    const getY = offset => {
+      if (offset >= 0) return y + offset < matrix.length ? y + offset : matrix.length - 1
+      if (offset < 0) return y + offset >= 0 ? y + offset : 0
+    }
     // 检查中点
     const checkC = matrix[y][x].join() === checkColor
     // 检查上点
-    const checkT = matrix[y - 1 >= 0 ? y - 1 : 0][x].join() === checkColor
+    const checkT = matrix[getY(-1)][x].join() === checkColor
     // 检查右点
-    const checkR = matrix[y][x + 1 < matrix[0].length ? x + 1 : matrix[0].length - 1].join() === checkColor
+    const checkR = matrix[y][getX(1)].join() === checkColor
     // 检查下点
-    const checkB = matrix[y + 1 < matrix.length ? y + 1 : matrix.length - 1][x].join() === checkColor
+    const checkB = matrix[getY(1)][x].join() === checkColor
     // 检查左点
-    const checkL = matrix[y][x - 1 >= 0 ? x - 1 : 0].join() === checkColor
+    const checkL = matrix[y][getX(-1)].join() === checkColor
+    // 检查左上
+    const checkTl = matrix[getY(-1)][getX(-1)].join() === checkColor
+    // 检查右上
+    const checkTr = matrix[getY(-1)][getX(1)].join() === checkColor
+    // 检查左下
+    const checkBl = matrix[getY(1)][getX(-1)].join() === checkColor
+    // 检查右下
+    const checkBr = matrix[getY(1)][getX(1)].join() === checkColor
+
+    const arr = [checkT, checkTr, checkR, checkBr, checkB, checkBl, checkL, checkTl]
+
+    let check = false
+
+    if (arr.filter(item => item).length === 3) {
+      arr.forEach((item, index) => {
+        if (item) {
+          let _check = true
+          for (let i = 0; i < 3; i++) {
+            if (!arr[index + i < arr.length ? index + i : index + i - arr.length]) _check = false
+          }
+          if (_check) check = true
+        }
+      })
+    }
 
     return {
       checkC,
       checkT,
       checkR,
       checkB,
-      checkL
+      checkL,
+      checkTl,
+      checkTr,
+      checkBl,
+      checkBr,
+      isRightAngle: check
     }
   }
 
@@ -255,18 +335,20 @@ const getBlackBarArea = matrix => {
       // 左中
       isLc: checkPoint.checkC && checkPoint.checkT && checkPoint.checkR && checkPoint.checkB && !checkPoint.checkL,
       // 右中
-      isRc: checkPoint.checkC && checkPoint.checkT && !checkPoint.checkR && checkPoint.checkB && checkPoint.checkL
+      isRc: checkPoint.checkC && checkPoint.checkT && !checkPoint.checkR && checkPoint.checkB && checkPoint.checkL,
+      // 直角
+      isRightAngle: checkPoint.isRightAngle
     }
   }
 
-  // console.log('matrix', matrix)
   let tl = { x: 0, y: 0 } // 左上角
   let tr = { x: 0, y: 0 } // 右上角
   let bl = { x: 0, y: 0 } // 左下角
   let br = { x: 0, y: 0 } // 右下角
   let arr = []
+  let markPointArr = [] // 标识点(直角)数组
   let check = false
-  let testIndex = 0
+  // let testIndex = 0
   /*标记*/
   for (let y = 0; y < matrix.length; y++) {
     for (let x = 0; x < matrix[0].length; x++) {
@@ -274,44 +356,22 @@ const getBlackBarArea = matrix => {
       check = false
       // 白色不进行矩形判断
       if (checkColor === '255,255,255,255') continue
-      // 疑似tl
-      if (checkPointType(matrix, checkColor, x, y).isTl) {
-        tl = { x: x, y: y }
-        for (let i = x; i < matrix[0].length; i++) {
-          if (matrix[y][i].join() !== checkColor) {
-            if (checkPointType(matrix, checkColor, i - 1, y).isTr && i - x > 10) {
-              tr = { x: i - 1, y: y }
-              testIndex ++
-              check = true
-            }
-            break
-          }
-        }
-
-        if (check) {
-          check = false
-          for (let i = tr.y; i < matrix.length; i++) {
-            if (matrix[i][tr.x].join() !== checkColor) {
-              if (checkPointType(matrix, checkColor, tr.x, i - 1).isBr && i - tr.y > 10) {
-                br = { x: tr.x, y: i - 1 }
-                check = true
-              }
-              break
-            }
-          }
-        }
-
-        if (check) {
-          check = false
-          for (let i = br.x; i >= 0; i--) {
-            if (matrix[br.y][i].join() !== checkColor) {
-              if (checkPointType(matrix, checkColor, i + 1, br.y).isBl && br.x - i > 10) {
-                bl = { x: i + 1, y: br.y }
-                check = true
-              }
-              break
-            }
-          }
+	    if (y < 350) {
+	    // if (y > 140 && y < 210) {
+      // if (x > 368 && y > 140 && y < 210) {
+        if (checkPointType(matrix, checkColor, x, y).isRightAngle) {
+          markPointArr.push({
+            x,
+            y,
+            color: checkColor,
+            _color: matrix[y][x]
+          })
+          arr.push({
+            tl: { x, y },
+            tr: { x: x + 4, y },
+            br: { x: x + 4, y: y + 4 },
+            bl: { x, y: y + 4 }
+          })
         }
       }
 
@@ -325,14 +385,153 @@ const getBlackBarArea = matrix => {
       }
     }
   }
+
+  const junctionMap = {} // 连接点数组
+  // 尝试连接所有标识点
+  for (let i = 0; i < markPointArr.length; i++) {
+    // 点1
+    const tx1 = markPointArr[i].x
+    const ty1 = markPointArr[i].y
+    // const color = markPointArr[i].color
+    const junction = []
+    for (let j = 0; j < markPointArr.length; j++) {
+      // 点2
+	    // 排除自身
+      if (i === j) continue
+	    // 排除过于靠近的两个点
+	    if (Math.abs(markPointArr[i].x - markPointArr[j].x) < 10 && Math.abs(markPointArr[i].y - markPointArr[j].y) < 10) continue
+      const tx2 = markPointArr[j].x
+      const ty2 = markPointArr[j].y
+      let xa = 0
+      let ya = 0
+      let start = tx1 > tx2 ? { x: tx2, y: ty2 } : { x: tx1, y: ty1 }
+      if (tx1 > tx2) {
+        xa = tx1 - tx2
+        ya = ty1 - ty2
+      } else {
+        xa = tx2 - tx1
+        ya = ty2 - ty1
+      }
+      let _color = {
+        _r: 0,
+        _g: 0,
+        _b: 0
+      }
+      if (Math.abs(xa) > Math.abs(ya)) {
+        for (let k = 0; k <= xa; k++) {
+          const x = (start.x + k).toFixed()
+          const y = (start.y + ya / xa * k).toFixed()
+          _color._r = _color._r + matrix[y][x][0]
+          _color._g = _color._g + matrix[y][x][1]
+          _color._b = _color._b + matrix[y][x][2]
+        }
+
+	      _color = {
+		      ..._color,
+		      r: _color._r / xa,
+		      g: _color._g / xa,
+		      b: _color._b / xa,
+		      xa,
+		      ya,
+		      id: 'a'
+	      }
+      } else {
+        for (let k = 0; k <= ya; k++) {
+          const x = (start.x + xa / ya * k).toFixed()
+          const y = (start.y + k).toFixed()
+          _color._r = _color._r + matrix[y][x][0]
+          _color._g = _color._g + matrix[y][x][1]
+          _color._b = _color._b + matrix[y][x][2]
+        }
+
+	      _color = {
+		      ..._color,
+		      r: _color._r / ya,
+		      g: _color._g / ya,
+		      b: _color._b / ya,
+		      xa,
+		      ya,
+		      id: 'b'
+	      }
+      }
+      const check = Math.abs(_color.r - markPointArr[i]._color[0]) < 20 && Math.abs(_color.g - markPointArr[i]._color[1]) < 20 && Math.abs(_color.b - markPointArr[i]._color[2]) < 20
+      if (check) junction.push({ x: markPointArr[j].x, y: markPointArr[j].y })
+      // if (!check) {
+      //   console.log('kkk')
+	    //   console.log('_color', _color)
+      //   console.log('markPointArr[i]', markPointArr[i])
+      //   console.log('markPointArr[j]', markPointArr[j])
+      // }
+    }
+    if (junction.length) {
+      const key = JSON.stringify([{ x: markPointArr[i].x, y: markPointArr[i].y }, ...junction].sort((a, b) => (a.x + '0' + a.y) - (b.x + '0' + b.y)))
+      junctionMap[key] = [{ x: markPointArr[i].x, y: markPointArr[i].y }, ...junction].sort((a, b) => (a.y + '0' + a.x) - (b.y + '0' + b.x))
+    }
+  }
+
+  console.log('junctionMap', junctionMap)
+  arr = []
+  for (const key in junctionMap) {
+    if (junctionMap[key].length !== 4) continue
+    junctionMap[key] = junctionMap[key].sort((a, b) => a.y - b.y)
+    const _junction = junctionMap[key].filter(item => item.y === junctionMap[key][0].y).sort((a, b) => a.x - b.x)
+    const tl = _junction[0]
+    const tr = junctionMap[key].find(item => (item.x !== tl.x || item.y !== tl.y) && item.x > tl.x)
+	  if (!tr) continue
+    const bl = junctionMap[key].find(item => (item.x !== tl.x || item.y !== tl.y) && item.y > tl.y && item.x <= tl.x)
+	  if (!bl) continue
+	  // console.log('tl', tl)
+	  // console.log('tr', tr)
+	  // console.log('bl', bl)
+	  // console.log('junctionMap[key]', junctionMap[key])
+    const br = junctionMap[key].find(item => (item.x !== tl.x || item.y !== tl.y) && (item.x !== tr.x || item.y !== tr.y) && (item.x !== bl.x || item.y !== bl.y))
+	  if (!br) continue
+	  arr.push({
+      tl,
+      tr,
+      br,
+      bl,
+      r: Math.abs(tl.y - tr.y) * Math.abs(tl.y - tr.y) / (Math.abs(tl.y - tr.y) * Math.abs(tl.y - tr.y) + Math.abs(tl.x - tr.x) * Math.abs(tl.x - tr.x)) * 90
+    })
+  }
+
+  console.log('markPointArr', markPointArr)
   console.log('arr', arr)
 
-  return arr.map(item => ({
-    x: item.tl.x,
-    y: item.tl.y,
-    w: item.tr.x - item.tl.x + 1,
-    h: item.bl.y - item.tl.y + 1
-  }))
+  // console.log('arr', arr)
+
+  // console.log('matrix', matrix[145][379].join()) // cc
+  // const ccx = 380
+  // const ccy = 146
+  // const expand = 4
+  // const table = []
+  // for (let i = ccy - expand; i <= ccy + expand; i++) {
+  //   const row = []
+  //   for (let j = ccx - expand; j <= ccx + expand; j++) {
+  //     row.push(matrix[i][j].slice(0, 3).join())
+  //   }
+  //   table.push(row)
+  // }
+  // window.table = table
+
+	// 标记
+	// 计算正确的旋转结果
+
+  return [...arr.map(item => {
+	  const a = Math.abs(item.tr.x - item.tl.x) + 1
+	  const b = Math.abs(item.tr.y - item.tl.y) + 1
+
+	  const aa = Math.abs(item.bl.x - item.tl.x) + 1
+	  const bb = Math.abs(item.bl.y - item.tl.y) + 1
+	  return {
+		  x: item.tl.x,
+		  y: item.tl.y,
+		  w: Math.sqrt(a * a + b * b),
+		  h: Math.sqrt(aa * aa + bb * bb),
+		  r: item.r,
+		  data: item
+	  }
+  })]
 }
 
 const init = (data, callback) => {
