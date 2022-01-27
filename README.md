@@ -9,9 +9,13 @@ gaussianBlurry(require('./test.png'), 5, 4.5, base64 => {
     console.log('base64', base64)
 })
 
-
 // 马赛克
 mosaic(require('./test.png'), 5, base64 => {
+    console.log('base64', base64)
+})
+
+// 超采样
+oversampling(require('./test.png'), 5, base64 => {
     console.log('base64', base64)
 })
 ```
